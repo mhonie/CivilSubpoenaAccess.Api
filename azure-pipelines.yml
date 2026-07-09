@@ -1,0 +1,220 @@
+trigger:
+- develop
+- master
+- release/*
+
+variables:
+
+- group: efiling-database-environment-variables
+
+- group: fjd-appprod1v-certificates
+
+- name: buildConfiguration
+  value: Release
+
+- name: repositoryRoot
+  value: $(Build.SourcesDirectory)
+
+- name: projectDir
+  value: $(Build.SourcesDirectory)\CivilSubpoenaAccess.Api
+
+- name: configScriptsDir
+  value: $(Build.SourcesDirectory)\CivilSubpoenaAccess.Api.Configuration
+
+- name: pipelineScriptsDir
+  value: $(Build.SourcesDirectory)\CivilSubpoenaAccess.Api.ReleasePipeline
+
+- name: installScriptsDir
+  value: $(Build.SourcesDirectory)\CivilSubpoenaAccess.Api.Installation
+
+- name: buildOutputDir
+  value: $(Build.SourcesDirectory)\CivilSubpoenaAccess.Api\bin\$(buildConfiguration)\net8.0
+
+- name: unitTestProject
+  value: CivilSubpoenaAccess.Api.UnitTests
+  
+- name: siteName
+  value: civil-subpoena-access-api
+
+- name: baseUrl
+  value: /civil-subpoena-access-api
+
+- name: appPoolName
+  value: civil-subpoena-access-api
+
+- name: sitePath
+  value: C:\inetpub\civil-subpoena-access-api
+
+stages:
+
+# =========================
+# BUILD
+# =========================
+- stage: Build
+
+  jobs:
+
+  - job: Build
+
+    pool:
+      name: Default
+      
+      demands:
+      - Agent.Name -equals FJD-APPPROD1V
+
+    variables:
+
+      environmentName: Development
+
+    steps:
+
+    - task: UseDotNet@2
+      inputs:
+        packageType: sdk
+        version: 8.x
+      
+    - script: call "$(pipelineScriptsDir)\build\dotnet-build.bat" "$(buildConfiguration)"
+      displayName: Build Solution
+
+# =========================
+# TEST
+# =========================
+- stage: Test
+
+  dependsOn: Build
+
+  condition: succeeded()
+
+  jobs:
+
+  - job: Test
+
+    pool:
+      name: Default
+      
+      demands:
+      - Agent.Name -equals FJD-APPPROD1V
+
+    variables:
+
+      environmentName: Development
+
+    steps:
+
+    - script: call "$(pipelineScriptsDir)\test\dotnet-test.bat" "$(unitTestProject)" "$(buildConfiguration)"
+      displayName: Run Unit Tests
+
+
+# =========================
+# PUBLISH
+# =========================
+- stage: Publish
+
+  dependsOn: Test
+
+  condition: succeeded()
+
+  jobs:
+
+  - job: Publish
+
+    pool:
+      name: Default
+      
+      demands:
+      - Agent.Name -equals FJD-APPPROD1V
+
+    variables:
+
+      environmentName: Production
+
+      publishOutputDir: $(Build.ArtifactStagingDirectory)\CivilSubpoenaAccess.Api
+
+    steps:
+
+    - script: dotnet publish "$(projectDir)\CivilSubpoenaAccess.Api.csproj" -c $(buildConfiguration) -o "$(publishOutputDir)"
+      displayName: Publish Web API
+
+    - script: call "$(pipelineScriptsDir)\publish\delete-config-files.bat" "$(publishOutputDir)"
+      displayName: Delete Existing Configuration
+
+    - script: call "$(pipelineScriptsDir)\publish\create-env-file.bat" CIVIL_SUBPOENA_ACCESS_API_ENVIRONMENT_NAME "$(environmentName)" "$(publishOutputDir)"
+      displayName: Create Production .env File
+    
+    - script: call "$(pipelineScriptsDir)\publish\copy-config-files.bat" "$(projectDir)" "$(publishOutputDir)" "$(environmentName)"
+      displayName: Copy Configuration Files
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(publishOutputDir)'
+        ArtifactName: 'CivilSubpoenaAccess.Api'
+        publishLocation: 'Container'
+      displayName: Publish Artifacts
+
+
+# =========================
+# DEPLOY
+# =========================
+- stage: Deploy
+
+  dependsOn: Publish
+
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+
+  jobs:
+
+  # =========================
+  # FJD-APPPROD1V
+  # =========================
+  - job: Deploy
+  
+    workspace:
+      clean: all
+
+    pool:
+      name: Default
+
+      demands:
+      - Agent.Name -equals FJD-APPPROD1V
+
+    steps:
+
+    - download: current
+      artifact: CivilSubpoenaAccess.Api
+      
+    - script: |
+        call "$(installScriptsDir)\BAT Scripts\set-environment-variables.bat" ^
+          "$(EFILING_DATABASE_USER_NAME)" ^
+          "$(EFILING_DATABASE_PASSWORD)" ^
+          "$(EFILING_DATABASE_SERVER_NAME)" ^
+          "$(EFILING_DATABASE_PORT)" ^
+          "$(EFILING_DATABASE_NAME)"
+      displayName: Set Environment Variables
+
+    - powershell: |
+        & "$(installScriptsDir)\Powershell\create-event-source.ps1" "CivilSubpoenaAccess.Api"
+      displayName: Create Event Source
+
+    - script: |
+        call "$(installScriptsDir)\BAT Scripts\setup-iis.bat" ^
+          "$(baseUrl)" ^
+          "$(appPoolName)" ^
+          "$(sitePath)"
+      displayName: Configure IIS
+    
+    - script: |
+        call "$(pipelineScriptsDir)\deploy\dotnet-deploy.bat" ^
+          "$(Pipeline.Workspace)\CivilSubpoenaAccess.Api" ^
+          "$(sitePath)" ^
+          "$(appPoolName)"
+      displayName: Deploy Artifacts
+
+    - script: |
+        call "$(pipelineScriptsDir)\deploy\verify-deployment.bat" ^
+          "http://fjd-appprod1v.courts.phila.gov/civil-subpoena-access-api/health"
+      displayName: Verify Deployment via HTTP
+      
+    - script: |
+        call "$(pipelineScriptsDir)\deploy\verify-deployment.bat" ^
+          "https://fjd-appprod1v.courts.phila.gov/civil-subpoena-access-api/health"
+      displayName: Verify Deployment via HTTPS

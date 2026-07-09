@@ -1,0 +1,234 @@
+@CivilSubpoenaAccess.Api_HostAddress = https://localhost:7146
+
+### 
+# Health Check
+###
+GET {{CivilSubpoenaAccess.Api_HostAddress}}/health
+
+###
+# Subpoena Status Counts
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!, $filingStartDate: DateTime!, $filingEndDate: DateTime!) { subpoenaStatusCounts(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate filingStartDate: $filingStartDate filingEndDate: $filingEndDate) { approved rejected pendingPayment pendingApproval error } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z",
+    "filingStartDate": "2026-01-01T00:00:00Z",
+    "filingEndDate": "2026-07-06T23:59:59Z"
+  }
+}
+
+###
+# Transactions By Subpoena Status
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!, $filingStartDate: DateTime!, $filingEndDate: DateTime!, $first: Int!) { transactionsBySubpoenaStatus(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate filingStartDate: $filingStartDate filingEndDate: $filingEndDate) { approved(first: $first) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } rejected(first: $first) { nodes { transactionId username rejectedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } pendingApproval(first: $first) { nodes { transactionId username filingDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } pendingPayment(first: $first) { nodes { transactionId username filingDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } error } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z",
+    "filingStartDate": "2026-01-01T00:00:00Z",
+    "filingEndDate": "2026-07-06T23:59:59Z",
+    "first": 5
+  }
+}
+
+###
+# Transactions By Subpoena Status - Filter Username
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!, $filingStartDate: DateTime!, $filingEndDate: DateTime!, $first: Int!, $username: String!) { transactionsBySubpoenaStatus(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate filingStartDate: $filingStartDate filingEndDate: $filingEndDate) { approved(first: $first, where: { username: { startsWith: $username } }) { nodes { transactionId username filingDate approvedDate rejectedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z",
+    "filingStartDate": "2026-01-01T00:00:00Z",
+    "filingEndDate": "2026-07-06T23:59:59Z",
+    "username": "shopper",
+    "first": 5
+  }
+}
+
+###
+# Subpoena Type Counts
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!) { subpoenaTypeCounts(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate) { attend produce error } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z"
+  }
+}
+
+###
+# Transactions By Subpoena Type
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!, $first: Int!) { transactionsBySubpoenaType(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate) { attend(first: $first) { nodes { transactionId username approvedDate rejectedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } produce(first: $first) { nodes { transactionId username approvedDate rejectedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } error } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z",
+    "first": 5
+  }
+}
+
+###
+# Transactions By Subpoena Type - Filter Username
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!, $first: Int!, $username: String!) { transactionsBySubpoenaType(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate) { attend(first: $first, where: { username: { startsWith: $username } }) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z",
+    "username": "shopper",
+    "first": 5
+  }
+}
+
+###
+# User Type Counts
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!) { userTypeCounts(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate) { public eFilingAttorney eFilingProSe cityLaw citySolicitor filingService error } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z"
+  }
+}
+
+###
+# Transactions By User Type
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!, $first: Int!) { transactionsByUserType(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate) { public(first: $first) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } eFilingAttorney(first: $first) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } eFilingProSe(first: $first) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } cityLaw(first: $first) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } citySolicitor(first: $first) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } filingService(first: $first) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } error } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z",
+    "first": 5
+  }
+}
+
+###
+# Transactions By User Type - Filter Username
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!, $first: Int!, $username: String!) { transactionsByUserType(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate) { public(first: $first, where: { username: { startsWith: $username } }) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } cityLaw(first: $first, where: { username: { startsWith: $username } }) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } citySolicitor(first: $first, where: { username: { startsWith: $username } }) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z",
+    "username": "shopper",
+    "first": 5
+  }
+}
+
+###
+# Approved Payment Type Counts
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!) { approvedPaymentTypeCounts(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate) { inFormaPauperis citySolicitor cityLaw walkIn americanExpress discoverCard mastercard visaCard error } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z"
+  }
+}
+
+###
+# Approved Payment Type Totals
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query($paidStartDate: DateTime!, $paidEndDate: DateTime!) { approvedPaymentTypeTotals(paidStartDate: $paidStartDate, paidEndDate: $paidEndDate) { inFormaPauperis cityLaw citySolicitor walkIn americanExpress discoverCard mastercard visaCard error } }",
+  "variables": {
+    "paidStartDate": "2026-01-01T00:00:00Z",
+    "paidEndDate": "2026-07-06T23:59:59Z"
+  }
+}
+
+###
+# Approved Payment Type Fees
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query($paidStartDate: DateTime!, $paidEndDate: DateTime!) { approvedPaymentTypeFees(paidStartDate: $paidStartDate, paidEndDate: $paidEndDate) { americanExpress discoverCard mastercard visaCard error } }",
+  "variables": {
+    "paidStartDate": "2026-01-01T00:00:00Z",
+    "paidEndDate": "2026-07-06T23:59:59Z"
+  }
+}
+
+###
+# Transactions By Payment Type
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!, $first: Int!) { transactionsByPaymentType(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate) { inFormaPauperis(first: $first) { nodes { transactionId username paidDate rejectedDate filingDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } walkIn(first: $first) { nodes { transactionId username paidDate rejectedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } cityLaw(first: $first) { nodes { transactionId username paidDate rejectedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } citySolicitor(first: $first) { nodes { transactionId username paidDate rejectedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } americanExpress(first: $first) { nodes { transactionId username paidDate rejectedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } discoverCard(first: $first) { nodes { transactionId username paidDate rejectedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } mastercard(first: $first) { nodes { transactionId username paidDate rejectedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } visaCard(first: $first) { nodes { transactionId username paidDate rejectedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } error } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z",
+    "first": 5
+  }
+}
+
+###
+# Transactions By Payment Type - Filter AMEX
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($approvedStartDate: DateTime!, $approvedEndDate: DateTime!, $first: Int!, $username: String!) { transactionsByPaymentType(approvedStartDate: $approvedStartDate approvedEndDate: $approvedEndDate) { americanExpress(first: $first, where: { username: { startsWith: $username } }) { nodes { transactionId username approvedDate itemCount paymentAmount } pageInfo { hasNextPage endCursor } } } }",
+  "variables": {
+    "approvedStartDate": "2026-01-01T00:00:00Z",
+    "approvedEndDate": "2026-07-06T23:59:59Z",
+    "username": "shopper",
+    "first": 5
+  }
+}
+
+###
+# Monthly Payment Type Counts
+###
+POST {{CivilSubpoenaAccess.Api_HostAddress}}/graphql
+Content-Type: application/json
+
+{
+  "query": "query ($filingStartDate: DateTime!, $filingEndDate: DateTime!) { monthlyPaymentTypeCounts(filingStartDate: $filingStartDate filingEndDate: $filingEndDate) { paymentTypeCountsByPeriod { startDate endDate paymentTypeCount { inFormaPauperis citySolicitor cityLaw walkIn americanExpress discoverCard mastercard visaCard } } error } }",
+  "variables": {
+    "filingStartDate": "2026-01-01T00:00:00Z",
+    "filingEndDate": "2026-07-06T23:59:59Z"
+  }
+}

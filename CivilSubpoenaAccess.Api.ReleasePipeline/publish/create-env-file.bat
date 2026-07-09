@@ -1,0 +1,9 @@
+@echo off
+
+set VARIABLE_NAME=%~1
+set ENVIRONMENT_NAME=%~2
+set OUTPUT_DIRECTORY=%~3
+
+echo %VARIABLE_NAME%=%ENVIRONMENT_NAME%>"%OUTPUT_DIRECTORY%\.env"
+
+echo Created "%OUTPUT_DIRECTORY%\.env"
