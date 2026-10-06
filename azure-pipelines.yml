@@ -1,0 +1,195 @@
+trigger:
+- develop
+- master
+- release/*
+
+variables:
+
+- group: civil-subpoena-access-urls
+
+- name: repositoryRoot
+  value: $(Build.SourcesDirectory)
+
+- name: websiteDir
+  value: $(Build.SourcesDirectory)\website
+
+- name: pipelineScriptsDir
+  value: $(Build.SourcesDirectory)\pipelines
+
+- name: installScriptsDir
+  value: $(Build.SourcesDirectory)\installation
+
+- name: siteName
+  value: civil-subpoena-access-ui
+
+- name: baseUrl
+  value: /civil-subpoena-access-ui
+
+- name: appPoolName
+  value: civil-subpoena-access-ui
+
+- name: sitePath
+  value: C:\inetpub\civil-subpoena-access-ui
+
+stages:
+
+# =========================
+# BUILD
+# =========================
+- stage: Build
+
+  jobs:
+
+  - job: Build
+
+    pool:
+      name: Default
+
+      demands:
+      - Agent.Name -equals FJD-APPPROD1V
+
+    steps:
+
+    - task: NodeTool@0
+      inputs:
+        versionSpec: 22.x
+      displayName: Use Node.js 22
+
+    - script: |
+        call "$(pipelineScriptsDir)\build\npm-build.bat" ^
+          "$(websiteDir)" ^
+          "$(baseUrl)/" ^
+          "$(VITE_API_BASE_URL)" ^
+          "$(VITE_SUBPOENA_PDF_BASE_URL)"
+      displayName: Build Website
+
+# =========================
+# TEST
+# =========================
+- stage: Test
+
+  dependsOn: Build
+
+  condition: succeeded()
+
+  jobs:
+
+  - job: Test
+
+    pool:
+      name: Default
+
+      demands:
+      - Agent.Name -equals FJD-APPPROD1V
+
+    steps:
+
+    - task: NodeTool@0
+      inputs:
+        versionSpec: 22.x
+      displayName: Use Node.js 22
+
+    - script: |
+        call "$(pipelineScriptsDir)\test\npm-test.bat" ^
+          "$(websiteDir)"
+      displayName: Run Website Tests
+
+# =========================
+# PUBLISH
+# =========================
+- stage: Publish
+
+  dependsOn: Test
+
+  condition: succeeded()
+
+  jobs:
+
+  - job: Publish
+
+    pool:
+      name: Default
+
+      demands:
+      - Agent.Name -equals FJD-APPPROD1V
+
+    variables:
+
+      publishOutputDir: $(Build.ArtifactStagingDirectory)\civil-subpoena-access-ui
+
+    steps:
+
+    - task: NodeTool@0
+      inputs:
+        versionSpec: 22.x
+      displayName: Use Node.js 22
+
+    - script: |
+        call "$(pipelineScriptsDir)\publish\npm-publish.bat" ^
+          "$(websiteDir)" ^
+          "$(publishOutputDir)" ^
+          "$(baseUrl)/" ^
+          "$(VITE_API_BASE_URL)" ^
+          "$(VITE_SUBPOENA_PDF_BASE_URL)"
+      displayName: Publish Website
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(publishOutputDir)'
+        ArtifactName: 'civil-subpoena-access-ui'
+        publishLocation: 'Container'
+      displayName: Publish Artifacts
+
+# =========================
+# DEPLOY
+# =========================
+- stage: Deploy
+
+  dependsOn: Publish
+
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+
+  jobs:
+
+  # =========================
+  # FJD-APPPROD1V
+  # =========================
+  - job: Deploy
+
+    workspace:
+      clean: all
+
+    pool:
+      name: Default
+
+      demands:
+      - Agent.Name -equals FJD-APPPROD1V
+
+    steps:
+
+    - download: current
+      artifact: civil-subpoena-access-ui
+
+    - script: |
+        call "$(installScriptsDir)\BAT Scripts\setup-iis.bat" ^
+          "$(baseUrl)" ^
+          "$(appPoolName)" ^
+          "$(sitePath)"
+      displayName: Configure IIS
+
+    - script: |
+        call "$(pipelineScriptsDir)\deploy\static-site-deploy.bat" ^
+          "$(Pipeline.Workspace)\civil-subpoena-access-ui" ^
+          "$(sitePath)" ^
+          "$(appPoolName)"
+      displayName: Deploy Artifacts
+
+    - script: |
+        call "$(pipelineScriptsDir)\deploy\verify-deployment.bat" ^
+          "http://fjd-appprod1v.courts.phila.gov$(baseUrl)/"
+      displayName: Verify Deployment via HTTP
+
+    - script: |
+        call "$(pipelineScriptsDir)\deploy\verify-deployment.bat" ^
+          "https://fjd-appprod1v.courts.phila.gov$(baseUrl)/"
+      displayName: Verify Deployment via HTTPS
